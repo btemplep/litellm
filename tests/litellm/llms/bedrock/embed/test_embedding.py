@@ -13,7 +13,11 @@ from litellm.types.utils import Embedding
 from litellm.main import bedrock_embedding, embedding, EmbeddingResponse, Usage
 
 
-def _get_mock_embedding_response(model: str):
+_mock_model_id = "arn:aws:bedrock:us-east-1:123412341234:application-inference-profile/abc123123"
+_mock_app_ip_url = "https://bedrock-runtime.us-east-1.amazonaws.com/model/arn%3Aaws%3Abedrock%3Aus-east-1%3A123412341234%3Aapplication-inference-profile%2Fabc123123/invoke"
+
+
+def _get_mock_embedding_response(model: str) -> EmbeddingResponse:
     return EmbeddingResponse(
         model=model,
         usage=Usage(
@@ -32,8 +36,6 @@ def _get_mock_embedding_response(model: str):
         ]
     )
 
-_mock_model_id = "arn:aws:bedrock:us-east-1:123412341234:application-inference-profile/abc123123"
-_mock_app_ip_url = "https://bedrock-runtime.us-east-1.amazonaws.com/model/arn%3Aaws%3Abedrock%3Aus-east-1%3A123412341234%3Aapplication-inference-profile%2Fabc123123/invoke"
 
 @pytest.mark.parametrize(
     "model",
@@ -50,7 +52,9 @@ def test_bedrock_embedding_titan_app_profile(model: str):
             model=model,
             model_id=_mock_model_id,
             input=["tester"],
-            aws_region_name="us-east-1"
+            aws_region_name="us-east-1",
+            aws_access_key_id="mockaws_access_key_id",
+            aws_secret_access_key="mockaws_secret_access_key"
         )
         assert mock_method.call_args.kwargs['endpoint_url'] == _mock_app_ip_url
         
@@ -63,14 +67,16 @@ def test_bedrock_embedding_titan_app_profile(model: str):
     ]
 )
 def test_bedrock_embedding_cohere_app_profile(model: str):
-    with patch("litellm.llms.bedrock.embed.embedding.cohere_embedding") as mock_func:
-        mock_func.return_value = _get_mock_embedding_response(model=model)
+    with patch("litellm.llms.bedrock.embed.embedding.cohere_embedding") as mock_cohere_embedding:
+        mock_cohere_embedding.return_value = _get_mock_embedding_response(model=model)
         resp = embedding(
             custom_llm_provider="bedrock",
             model=model,
             model_id=_mock_model_id,
             input=["tester"],
-            aws_region_name="us-east-1"
+            aws_region_name="us-east-1",
+            aws_access_key_id="mockaws_access_key_id",
+            aws_secret_access_key="mockaws_secret_access_key"
         )
-        assert mock_func.call_args.kwargs['complete_api_base'] == _mock_app_ip_url
+        assert mock_cohere_embedding.call_args.kwargs['complete_api_base'] == _mock_app_ip_url
         
